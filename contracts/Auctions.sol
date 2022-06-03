@@ -133,13 +133,17 @@ contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721H
 
     function endAuction(uint auctionId) external override nonReentrant {
         Auction storage auction = _auctions[auctionId];
+        bool ended = block.timestamp >= auction.endsAt;
         require(auction.active, "Auction is not active.");
         Bid[] storage bids = auction.bids;
         if(bids.length == 0) {
+            if(!ended) {
+                require(msg.sender == auction.seller, "You are not the seller of this auction.");
+            }
             auction.active = false;
             emit AuctionCancelled(auctionId);
         } else {
-            require(block.timestamp >= auction.endsAt, "Auction has not ended yet.");
+            require(ended, "Auction has not ended yet.");
             uint bidId = bids.length - 1;
             Bid storage winningBid = bids[bidId];
             uint fees = winningBid.bid.feesOf(_fee);

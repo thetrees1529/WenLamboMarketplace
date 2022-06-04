@@ -28,7 +28,6 @@ interface IAuctions {
     }
 
     event FeesTaken(uint fees);
-    event FeesSplit(uint fees);
     event FeeSet(Fees.Fee fee);
 
     event MinBidIncrementSet(uint minBidIncrement);
@@ -40,7 +39,7 @@ interface IAuctions {
 
     function setFee(Fees.Fee calldata fee) external;
 
-    function splitFees() external;
+    function withdraw() external;
 
     function setMinBidIncrement(uint minBidIncrement) external;
 
@@ -74,11 +73,10 @@ contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721H
         emit FeeSet(fee);
     }
 
-    function splitFees() external override nonReentrant {
+    function withdraw() external override nonReentrant {
         uint fees = _fees;
-        require(_makePayment(fees), "No payees set up.");
+        _hville.safeTransfer(msg.sender, fees);
         delete _fees;
-        emit FeesSplit(fees);
     }
 
     function setMinBidIncrement(uint minBidIncrement) external override nonReentrant onlyOwner {
@@ -147,9 +145,9 @@ contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721H
             uint bidId = bids.length - 1;
             Bid storage winningBid = bids[bidId];
             uint fees = winningBid.bid.feesOf(_fee);
-            _fees += fees;
             _hville.safeTransfer(auction.seller, winningBid.bid);
             _lambos.safeTransferFrom(address(this), auction.seller, auction.tokenId);
+            if (!_makePayment(fees)) _fees += fees;
             emit AuctionEnded(auctionId, bidId);
             emit FeesTaken(fees);
         }

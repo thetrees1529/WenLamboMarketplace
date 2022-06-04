@@ -26,7 +26,6 @@ interface IOffers {
     }
 
     event FeesTaken(uint fees);
-    event FeesSplit(uint fees);
     event FeeSet(Fees.Fee fee);
 
     event Offered(uint offerId, address buyer, uint tokenId, uint hville, Nft[] nfts, uint expiresAt);
@@ -35,7 +34,7 @@ interface IOffers {
 
     function setFee(Fees.Fee calldata fee) external;
 
-    function splitFees() external;
+    function withdraw() external;
 
     function makeOffer(uint tokenId, uint hville, Nft[] calldata nfts, uint expiresAt) external;
 
@@ -66,11 +65,10 @@ contract Offers is IOffers, Ownable, ERC20Payments, ReentrancyGuard {
         emit FeeSet(fee);
     }
 
-    function splitFees() external override nonReentrant {
+    function withdraw() external override nonReentrant {
         uint fees = _fees;
-        require(_makePayment(fees), "No payees set up.");
+        _hville.safeTransfer(msg.sender, fees);
         delete _fees;
-        emit FeesSplit(fees);
     }
 
     Offer[] private _offers;
@@ -98,10 +96,10 @@ contract Offers is IOffers, Ownable, ERC20Payments, ReentrancyGuard {
         require(block.timestamp < offer.expiresAt, "Offer has expired.");
         _lambos.safeTransferFrom(seller, offer.buyer, offer.tokenId);
         uint fees = offer.hville.feesOf(_fee);
-        _fees += fees;
         uint toSeller = offer.hville - fees;
         _hville.safeTransferFrom(offer.buyer, seller, toSeller);
         _hville.safeTransferFrom(offer.buyer, address(this), fees);
+        if(!_makePayment(fees)) _fees += fees;
         Nft[] storage nfts = offer.nfts;
         for(uint i; i < nfts.length; i ++) {
             Nft storage nft = nfts[i];

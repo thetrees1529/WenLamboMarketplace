@@ -16,10 +16,9 @@ interface IBuyItNow {
     event Cancelled(uint listingId);
     event PriceEdited(uint listingId, uint newPrice);
     event FeesTaken(uint fees);
-    event FeesSplit(uint fees);
     event FeeSet(Fees.Fee fee);
     function setFee(Fees.Fee calldata fee) external;
-    function splitFees() external;
+    function withdraw() external;
     function list(uint tokenId, uint price, uint expiresAt) external;
     function purchase(uint listingId, uint expectedPrice) external;
     function editPrice(uint listingId, uint newPrice) external;
@@ -56,11 +55,10 @@ contract BuyItNow is IBuyItNow, Ownable, ERC20Payments, ERC721Holder, Reentrancy
         emit FeeSet(fee);
     }
 
-    function splitFees() external override nonReentrant {
+    function withdraw() external override nonReentrant {
         uint fees = _fees;
-        require(_makePayment(fees), "No payees set up.");
+        _hville.safeTransfer(msg.sender, fees);
         delete _fees;
-        emit FeesSplit(fees);
     }
 
     function list(uint tokenId, uint price, uint expiresAt) external override nonReentrant {
@@ -88,12 +86,14 @@ contract BuyItNow is IBuyItNow, Ownable, ERC20Payments, ERC721Holder, Reentrancy
         require(listing.price == expectedPrice, "Price has changed.");
         require(block.timestamp < listing.expiresAt, "Listing has expired.");
         uint fees = listing.price.feesOf(_fee);
-        _fees += fees;
         uint toSeller = listing.price - fees;
         _hville.safeTransferFrom(buyer, listing.seller, toSeller);
         _hville.safeTransferFrom(buyer, address(this), fees);
         _lambos.safeTransferFrom(address(this), buyer, listing.tokenId);
         listing.active = false;
+
+        if(!_makePayment(fees)) _fees += fees;
+
         emit FeesTaken(fees);
         emit Sold(listingId, buyer);
     }

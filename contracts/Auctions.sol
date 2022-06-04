@@ -8,8 +8,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "./Fees.sol";
-import "./ERC20Payments.sol";
+import "utils/contracts/payments/Fees.sol";
+import "utils/contracts/payments/ERC20Payments.sol";
 
 interface IAuctions {
 

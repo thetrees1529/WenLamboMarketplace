@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "./Fees.sol";
-import "./ERC20Payments.sol";
+import "utils/contracts/payments/Fees.sol";
+import "utils/contracts/payments/ERC20Payments.sol";
 
 interface IBuyItNow {
     event Listed(uint listingId, address seller, uint tokenId, uint price, uint expiresAt);

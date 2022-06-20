@@ -30,10 +30,10 @@ interface IAuctions {
 
     event MinBidIncrementSet(uint minBidIncrement);
 
-    event AuctionStarted(uint auctionId, address seller, uint tokenId, uint startingBid, uint endsAt);
+    event Started(uint auctionId, address seller, uint tokenId, uint startingBid, uint endsAt);
     event BidOn(uint auctionId, uint bidId, address bidder, uint bid);
-    event AuctionCancelled(uint auctionId);
-    event AuctionEnded(uint auctionId, uint feesTaken, uint bidId);
+    event Cancelled(uint auctionId);
+    event Ended(uint auctionId, uint feesTaken, uint bidId);
 
     function setFee(Fees.Fee calldata fee) external;
 
@@ -95,7 +95,7 @@ contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721H
         auction.startingBid = startingBid;
         auction.endsAt = endsAt;
         auction.active = true;
-        emit AuctionStarted(auctionId, seller, tokenId,startingBid,endsAt);
+        emit Started(auctionId, seller, tokenId,startingBid,endsAt);
     }
 
     function makeBid(uint auctionId, uint bid) external override nonReentrant {
@@ -137,7 +137,7 @@ contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721H
                 require(msg.sender == auction.seller, "You are not the seller of this auction.");
             }
             auction.active = false;
-            emit AuctionCancelled(auctionId);
+            emit Cancelled(auctionId);
         } else {
             require(ended, "Auction has not ended yet.");
             uint bidId = bids.length - 1;
@@ -146,7 +146,7 @@ contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721H
             _hville.safeTransfer(auction.seller, winningBid.bid);
             _lambos.safeTransferFrom(address(this), auction.seller, auction.tokenId);
             if (!_makePayment(fees)) _fees += fees;
-            emit AuctionEnded(auctionId, fees, bidId);
+            emit Ended(auctionId, fees, bidId);
         }
     }
 }

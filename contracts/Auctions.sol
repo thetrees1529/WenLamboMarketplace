@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.14;
+pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
@@ -26,8 +26,6 @@ interface IAuctions {
         uint endsAt;
         bool active;
     }
-
-    event FeesTaken(uint fees);
     event FeeSet(Fees.Fee fee);
 
     event MinBidIncrementSet(uint minBidIncrement);
@@ -35,7 +33,7 @@ interface IAuctions {
     event AuctionStarted(uint auctionId, address seller, uint tokenId, uint startingBid, uint endsAt);
     event BidOn(uint auctionId, uint bidId, address bidder, uint bid);
     event AuctionCancelled(uint auctionId);
-    event AuctionEnded(uint auctionId, uint bidId);
+    event AuctionEnded(uint auctionId, uint feesTaken, uint bidId);
 
     function setFee(Fees.Fee calldata fee) external;
 
@@ -148,8 +146,7 @@ contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721H
             _hville.safeTransfer(auction.seller, winningBid.bid);
             _lambos.safeTransferFrom(address(this), auction.seller, auction.tokenId);
             if (!_makePayment(fees)) _fees += fees;
-            emit AuctionEnded(auctionId, bidId);
-            emit FeesTaken(fees);
+            emit AuctionEnded(auctionId, fees, bidId);
         }
     }
 }

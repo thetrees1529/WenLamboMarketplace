@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.14;
+pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
@@ -12,10 +12,9 @@ import "utils/contracts/payments/ERC20Payments.sol";
 
 interface IBuyItNow {
     event Listed(uint listingId, address seller, uint tokenId, uint price, uint expiresAt);
-    event Sold(uint listingId, address buyer);
+    event Sold(uint listingId, uint feesTaken, address buyer);
     event Cancelled(uint listingId);
     event PriceEdited(uint listingId, uint newPrice);
-    event FeesTaken(uint fees);
     event FeeSet(Fees.Fee fee);
     function setFee(Fees.Fee calldata fee) external;
     function withdraw() external;
@@ -94,8 +93,7 @@ contract BuyItNow is IBuyItNow, Ownable, ERC20Payments, ERC721Holder, Reentrancy
 
         if(!_makePayment(fees)) _fees += fees;
 
-        emit FeesTaken(fees);
-        emit Sold(listingId, buyer);
+        emit Sold(listingId, fees, buyer);
     }
 
     function editPrice(uint listingId, uint newPrice) external override nonReentrant {

@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.14;
+pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -25,12 +25,11 @@ interface IOffers {
         bool active;
     }
 
-    event FeesTaken(uint fees);
     event FeeSet(Fees.Fee fee);
 
     event Offered(uint offerId, address buyer, uint tokenId, uint hville, Nft[] nfts, uint expiresAt);
     event OfferCancelled(uint offerId);
-    event OfferAccepted(uint offerId, address seller);
+    event OfferAccepted(uint offerId, uint feesTaken, address seller);
 
     function setFee(Fees.Fee calldata fee) external;
 
@@ -105,8 +104,7 @@ contract Offers is IOffers, Ownable, ERC20Payments, ReentrancyGuard {
             Nft storage nft = nfts[i];
             nft.nft.safeTransferFrom(offer.buyer, seller, nft.id);
         }
-        emit FeesTaken(fees);
-        emit OfferAccepted(offerId, seller);
+        emit OfferAccepted(offerId, fees, seller);
     }
 
     function cancelOffer(uint offerId) external override nonReentrant {

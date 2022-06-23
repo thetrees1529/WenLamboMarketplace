@@ -47,6 +47,8 @@ interface IAuctions {
 
     function endAuction(uint auctionId) external;
 
+    function removeAuction(uint auctionId) external;
+
 }
 
 contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721Holder {
@@ -153,7 +155,7 @@ contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721H
         emit Ended(auctionId, fees, bidId);
     }
 
-    function removeAuction(uint auctionId) external nonReentrant {
+    function removeAuction(uint auctionId) external override nonReentrant {
         Auction storage auction = _auctions[auctionId];
         require(auction.active, "Auction is not active.");
         bool ended = block.timestamp >= auction.endsAt;

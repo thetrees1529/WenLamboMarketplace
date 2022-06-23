@@ -13,15 +13,15 @@ import "utils/contracts/payments/ERC20Payments.sol";
 interface IBuyItNow {
     event Listed(uint listingId, address seller, uint tokenId, uint price, uint expiresAt);
     event Sold(uint listingId, uint feesTaken, address buyer);
-    event Cancelled(uint listingId);
+    event Removed(uint listingId);
     event PriceEdited(uint listingId, uint newPrice);
     event FeeSet(Fees.Fee fee);
     function setFee(Fees.Fee calldata fee) external;
     function withdraw() external;
-    function list(uint tokenId, uint price, uint expiresAt) external;
+    function list(uint tokenId, uint price, uint expiresAt) external returns(uint listingId);
     function purchase(uint listingId, uint expectedPrice) external;
     function editPrice(uint listingId, uint newPrice) external;
-    function cancel(uint listingId) external;
+    function remove(uint listingId) external;
 }
 
 contract BuyItNow is IBuyItNow, Ownable, ERC20Payments, ERC721Holder, ReentrancyGuard {
@@ -54,16 +54,16 @@ contract BuyItNow is IBuyItNow, Ownable, ERC20Payments, ERC721Holder, Reentrancy
         emit FeeSet(fee);
     }
 
-    function withdraw() external override nonReentrant {
+    function withdraw() external override onlyOwner nonReentrant {
         uint fees = _fees;
-        _hville.safeTransfer(msg.sender, fees);
         delete _fees;
+        _hville.safeTransfer(msg.sender, fees);
     }
 
-    function list(uint tokenId, uint price, uint expiresAt) external override nonReentrant {
+    function list(uint tokenId, uint price, uint expiresAt) external override nonReentrant returns(uint listingId) {
         _lambos.safeTransferFrom(msg.sender, address(this), tokenId);
         address seller = msg.sender;
-        uint listingId = _listings.length;
+        listingId = _listings.length;
         _listings.push(
             Listing(
                 {
@@ -105,13 +105,14 @@ contract BuyItNow is IBuyItNow, Ownable, ERC20Payments, ERC721Holder, Reentrancy
         emit PriceEdited(listingId, newPrice);
     }
 
-    function cancel(uint listingId) external override nonReentrant {
+    function remove(uint listingId) external override nonReentrant {
         Listing storage listing = _listings[listingId];
         require(listing.active, "Cannot cancel listing that is not active.");
-        require(msg.sender == listing.seller, "Cannot cancel listing you aren't the seller of.");
+        bool expired = block.timestamp >= listing.expiresAt;
+        if(!expired) require(msg.sender == listing.seller, "Cannot cancel listing you aren't the seller of.");
         _lambos.safeTransferFrom(address(this), msg.sender, listing.tokenId);
         listing.active = false;
-        emit Cancelled(listingId);
+        emit Removed(listingId);
     }
 
 }

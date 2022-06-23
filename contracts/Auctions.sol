@@ -32,7 +32,7 @@ interface IAuctions {
 
     event Started(uint auctionId, address seller, uint tokenId, uint startingBid, uint endsAt);
     event BidOn(uint auctionId, uint bidId, address bidder, uint bid);
-    event Cancelled(uint auctionId);
+    event Removed(uint auctionId);
     event Ended(uint auctionId, uint feesTaken, uint bidId);
 
     function setFee(Fees.Fee calldata fee) external;
@@ -71,10 +71,10 @@ contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721H
         emit FeeSet(fee);
     }
 
-    function withdraw() external override nonReentrant {
+    function withdraw() external override onlyOwner nonReentrant {
         uint fees = _fees;
-        _hville.safeTransfer(msg.sender, fees);
         delete _fees;
+        _hville.safeTransfer(msg.sender, fees);
     }
 
     function setMinBidIncrement(uint minBidIncrement) external override nonReentrant onlyOwner {
@@ -129,24 +129,41 @@ contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721H
 
     function endAuction(uint auctionId) external override nonReentrant {
         Auction storage auction = _auctions[auctionId];
-        bool ended = block.timestamp >= auction.endsAt;
         require(auction.active, "Auction is not active.");
+
+        bool ended = block.timestamp >= auction.endsAt;
+        require(ended, "Auction has not ended yet.");
+
         Bid[] storage bids = auction.bids;
-        if(bids.length == 0) {
-            if(!ended) {
-                require(msg.sender == auction.seller, "You are not the seller of this auction.");
-            }
-            auction.active = false;
-            emit Cancelled(auctionId);
-        } else {
-            require(ended, "Auction has not ended yet.");
-            uint bidId = bids.length - 1;
-            Bid storage winningBid = bids[bidId];
-            uint fees = winningBid.bid.feesOf(_fee);
-            _hville.safeTransfer(auction.seller, winningBid.bid);
-            _lambos.safeTransferFrom(address(this), auction.seller, auction.tokenId);
-            if (!_makePayment(fees)) _fees += fees;
-            emit Ended(auctionId, fees, bidId);
-        }
+        require(bids.length > 0, "Auction has no bids.");
+
+        uint bidId = bids.length - 1;
+        Bid storage winningBid = bids[bidId];
+
+        uint fees = winningBid.bid.feesOf(_fee);
+        uint toSeller = winningBid.bid - fees;
+
+        _hville.safeTransfer(auction.seller, toSeller);
+        if (!_makePayment(fees)) _fees += fees;
+
+        _lambos.safeTransferFrom(address(this), winningBid.bidder, auction.tokenId);
+
+        auction.active = false;
+
+        emit Ended(auctionId, fees, bidId);
     }
+
+    function removeAuction(uint auctionId) external nonReentrant {
+        Auction storage auction = _auctions[auctionId];
+        require(auction.active, "Auction is not active.");
+        bool ended = block.timestamp >= auction.endsAt;
+        if(!ended) require(msg.sender == auction.seller);
+        Bid[] storage bids = auction.bids;
+        require(bids.length == 0, "Auction has bids.");
+        _lambos.safeTransferFrom(address(this), auction.seller, auction.tokenId);
+
+        emit Removed(auctionId);
+    }
+
+    
 }

@@ -66,8 +66,8 @@ contract Offers is IOffers, Ownable, ERC20Payments, ReentrancyGuard {
 
     function withdraw() external override nonReentrant {
         uint fees = _fees;
-        _hville.safeTransfer(msg.sender, fees);
         delete _fees;
+        _hville.safeTransfer(msg.sender, fees);
     }
 
     Offer[] private _offers;

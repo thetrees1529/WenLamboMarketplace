@@ -17,7 +17,6 @@ interface IBuyItNow {
     event PriceEdited(uint listingId, uint newPrice);
     event FeeSet(Fees.Fee fee);
     function setFee(Fees.Fee calldata fee) external;
-    function withdraw() external;
     function list(uint tokenId, uint price, uint expiresAt) external returns(uint listingId);
     function purchase(uint listingId, uint expectedPrice) external;
     function editPrice(uint listingId, uint newPrice) external;
@@ -47,17 +46,10 @@ contract BuyItNow is IBuyItNow, Ownable, ERC20Payments, ERC721Holder, Reentrancy
 
     Listing[] private _listings;
     Fees.Fee private _fee;
-    uint private _fees;
 
     function setFee(Fees.Fee calldata fee) external override nonReentrant onlyOwner {
         _fee = fee;
         emit FeeSet(fee);
-    }
-
-    function withdraw() external override onlyOwner nonReentrant {
-        uint fees = _fees;
-        delete _fees;
-        _hville.safeTransfer(msg.sender, fees);
     }
 
     function list(uint tokenId, uint price, uint expiresAt) external override nonReentrant returns(uint listingId) {
@@ -91,7 +83,7 @@ contract BuyItNow is IBuyItNow, Ownable, ERC20Payments, ERC721Holder, Reentrancy
         _lambos.safeTransferFrom(address(this), buyer, listing.tokenId);
         listing.active = false;
 
-        if(!_makePayment(fees)) _fees += fees;
+        _makePayment(fees);
 
         emit Sold(listingId, fees, buyer);
     }

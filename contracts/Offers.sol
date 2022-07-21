@@ -33,8 +33,6 @@ interface IOffers {
 
     function setFee(Fees.Fee calldata fee) external;
 
-    function withdraw() external;
-
     function makeOffer(uint tokenId, uint hville, Nft[] calldata nfts, uint expiresAt) external;
 
     function acceptOffer(uint offerId) external;
@@ -57,18 +55,12 @@ contract Offers is IOffers, Ownable, ERC20Payments, ReentrancyGuard {
     }
 
     Fees.Fee private _fee;
-    uint private _fees;
 
     function setFee(Fees.Fee calldata fee) external override nonReentrant onlyOwner {
         _fee = fee;
         emit FeeSet(fee);
     }
 
-    function withdraw() external override nonReentrant {
-        uint fees = _fees;
-        delete _fees;
-        _hville.safeTransfer(msg.sender, fees);
-    }
 
     Offer[] private _offers;
 
@@ -98,7 +90,7 @@ contract Offers is IOffers, Ownable, ERC20Payments, ReentrancyGuard {
         uint toSeller = offer.hville - fees;
         _hville.safeTransferFrom(offer.buyer, seller, toSeller);
         _hville.safeTransferFrom(offer.buyer, address(this), fees);
-        if(!_makePayment(fees)) _fees += fees;
+        _makePayment(fees);
         Nft[] storage nfts = offer.nfts;
         for(uint i; i < nfts.length; i ++) {
             Nft storage nft = nfts[i];

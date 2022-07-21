@@ -37,8 +37,6 @@ interface IAuctions {
 
     function setFee(Fees.Fee calldata fee) external;
 
-    function withdraw() external;
-
     function setMinBidIncrement(uint minBidIncrement) external;
 
     function createAuction(uint tokenId, uint startingBid, uint endsAt) external;
@@ -65,18 +63,11 @@ contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721H
     }
 
     Fees.Fee private _fee;
-    uint private _fees;
     uint private _minBidIncrement;
 
     function setFee(Fees.Fee calldata fee) external override nonReentrant onlyOwner {
         _fee = fee;
         emit FeeSet(fee);
-    }
-
-    function withdraw() external override onlyOwner nonReentrant {
-        uint fees = _fees;
-        delete _fees;
-        _hville.safeTransfer(msg.sender, fees);
     }
 
     function setMinBidIncrement(uint minBidIncrement) external override nonReentrant onlyOwner {
@@ -146,7 +137,7 @@ contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721H
         uint toSeller = winningBid.bid - fees;
 
         _hville.safeTransfer(auction.seller, toSeller);
-        if (!_makePayment(fees)) _fees += fees;
+        _makePayment(fees);
 
         _lambos.safeTransferFrom(address(this), winningBid.bidder, auction.tokenId);
 
@@ -163,7 +154,7 @@ contract Auctions is IAuctions, Ownable, ERC20Payments, ReentrancyGuard, ERC721H
         Bid[] storage bids = auction.bids;
         require(bids.length == 0, "Auction has bids.");
         _lambos.safeTransferFrom(address(this), auction.seller, auction.tokenId);
-
+        auction.active = false;
         emit Removed(auctionId);
     }
 
